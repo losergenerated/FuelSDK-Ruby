@@ -33,10 +33,21 @@ WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWIS
 
 USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-=end 
+=end
 
 require 'securerandom'
 module FuelSDK
+
+	class FuelError < StandardError
+		attr_accessor :response, :request_options
+
+		def initialize(message, opts={})
+			super(message)
+			self.response = opts[:response]
+			self.request_options = opts[:request_options]
+		end
+	end
+
 	class Response
 		# not doing accessor so user, can't update these values from response.
 		# You will see in the code some of these
@@ -127,7 +138,9 @@ module FuelSDK
 					h['params'] = {'legacy' => 1}
 				end
 				response = post("https://auth.exacttargetapis.com/v1/requestToken", options)
-				raise "Unable to refresh token: #{response['message']}" unless response.has_key?('accessToken')
+				unless response.has_key?('accessToken')
+					raise FuelError.new("Unable to refresh token: #{response['message']}", :response => response, :request_options => options)
+				end
 
 				self.access_token = response['accessToken']
 				self.internal_token = response['legacyToken']
